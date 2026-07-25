@@ -15,7 +15,6 @@
     "recharts": "^2.12.7",
     "lucide-react": "^0.383.0",
     "papaparse": "^5.4.1",
-    "googleapis": "^144.0.0",
     "google-auth-library": "^9.14.2",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
