@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Radio, Lock, Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
+import { apiFetch, setStoredSession } from "@/lib/apiClient";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,31 +14,28 @@ export default function LoginPage() {
 
   const handleSubmit = async () => {
     setError("");
-    if (mode === "admin") {
-      if (password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
-        localStorage.setItem("adstream_session", JSON.stringify({ type: "admin" }));
+    setLoading(true);
+    try {
+      if (mode === "admin") {
+        const { token } = await apiFetch("/api/auth/admin-login", {
+          method: "POST",
+          body: JSON.stringify({ password }),
+        });
+        setStoredSession({ type: "admin", token });
         router.push("/admin");
       } else {
-        setError("Incorrect admin password.");
+        const { token, partner } = await apiFetch("/api/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        });
+        setStoredSession({ type: "partner", token, partner });
+        router.push("/dashboard");
       }
-      return;
+    } catch (err) {
+      setError(err.message || "Login failed.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(true);
-    const { data, error: dbError } = await supabase
-      .from("partners")
-      .select("*")
-      .eq("email", email.trim().toLowerCase())
-      .eq("password", password)
-      .maybeSingle();
-    setLoading(false);
-
-    if (dbError || !data) {
-      setError("Incorrect email or password.");
-      return;
-    }
-    localStorage.setItem("adstream_session", JSON.stringify({ type: "partner", partner: data }));
-    router.push("/dashboard");
   };
 
   return (
@@ -74,13 +71,13 @@ export default function LoginPage() {
               </div>
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 12.5, color: "#8B93A7", marginBottom: 6 }}>Password</div>
-                <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+                <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" onKeyDown={(e) => e.key === "Enter" && handleSubmit()} />
               </div>
             </>
           ) : (
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 12.5, color: "#8B93A7", marginBottom: 6 }}>Admin password</div>
-              <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+              <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" onKeyDown={(e) => e.key === "Enter" && handleSubmit()} />
             </div>
           )}
 
@@ -91,7 +88,7 @@ export default function LoginPage() {
             {mode === "admin" ? "Enter Admin Panel" : "Log In"}
           </button>
         </div>
-        <div style={{ textAlign: "center", color: "#5B6272", fontSize: 12, marginTop: 14 }}>Partner Reporting Portal</div>
+        <div style={{ textAlign: "center", color: "#5B6272", fontSize: 12, marginTop: 14 }}>Publisher Reporting Portal</div>
       </div>
     </div>
   );
